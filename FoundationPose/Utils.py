@@ -676,38 +676,74 @@ def draw_xyz_axis(color, ob_in_cam, scale=0.1, K=np.eye(3), thickness=3, transpa
   '''
   @color: BGR
   '''
+  # if is_input_rgb:
+  #   color = cv2.cvtColor(color,cv2.COLOR_RGB2BGR)
+  # xx = np.array([1,0,0,1]).astype(float)
+  # yy = np.array([0,1,0,1]).astype(float)
+  # zz = np.array([0,0,1,1]).astype(float)
+  # xx[:3] = xx[:3]*scale
+  # yy[:3] = yy[:3]*scale
+  # zz[:3] = zz[:3]*scale
+  # origin = tuple(project_3d_to_2d(np.array([0,0,0,1]), K, ob_in_cam))
+  # xx = tuple(project_3d_to_2d(xx, K, ob_in_cam))
+  # yy = tuple(project_3d_to_2d(yy, K, ob_in_cam))
+  # zz = tuple(project_3d_to_2d(zz, K, ob_in_cam))
+  # line_type = cv2.LINE_AA
+  # arrow_len = 0
+  # tmp = color.copy()
+  # tmp1 = tmp.copy()
+  # tmp1 = cv2.arrowedLine(tmp1, origin, xx, color=(0,0,255), thickness=thickness,line_type=line_type, tipLength=arrow_len)
+  # mask = np.linalg.norm(tmp1-tmp, axis=-1)>0
+  # tmp[mask] = tmp[mask]*transparency + tmp1[mask]*(1-transparency)
+  # tmp1 = tmp.copy()
+  # tmp1 = cv2.arrowedLine(tmp1, origin, yy, color=(0,255,0), thickness=thickness,line_type=line_type, tipLength=arrow_len)
+  # mask = np.linalg.norm(tmp1-tmp, axis=-1)>0
+  # tmp[mask] = tmp[mask]*transparency + tmp1[mask]*(1-transparency)
+  # tmp1 = tmp.copy()
+  # tmp1 = cv2.arrowedLine(tmp1, origin, zz, color=(255,0,0), thickness=thickness,line_type=line_type, tipLength=arrow_len)
+  # mask = np.linalg.norm(tmp1-tmp, axis=-1)>0
+  # tmp[mask] = tmp[mask]*transparency + tmp1[mask]*(1-transparency)
+  # tmp = tmp.astype(np.uint8)
+  # if is_input_rgb:
+  #   tmp = cv2.cvtColor(tmp,cv2.COLOR_BGR2RGB)
+
+  # return tmp
   if is_input_rgb:
-    color = cv2.cvtColor(color,cv2.COLOR_RGB2BGR)
-  xx = np.array([1,0,0,1]).astype(float)
-  yy = np.array([0,1,0,1]).astype(float)
-  zz = np.array([0,0,1,1]).astype(float)
-  xx[:3] = xx[:3]*scale
-  yy[:3] = yy[:3]*scale
-  zz[:3] = zz[:3]*scale
-  origin = tuple(project_3d_to_2d(np.array([0,0,0,1]), K, ob_in_cam))
+      color = cv2.cvtColor(color, cv2.COLOR_RGB2BGR)
+
+  # Defining the x, y, z unit vectors
+  xx = np.array([1, 0, 0, 1]).astype(float)
+  yy = np.array([0, 1, 0, 1]).astype(float)
+  zz = np.array([0, 0, 1, 1]).astype(float)
+
+  # Scaling the vectors
+  xx[:3] = xx[:3] * scale
+  yy[:3] = yy[:3] * scale
+  zz[:3] = zz[:3] * scale
+
+  # Projecting the origin and the end points of the axes onto the 2D image
+  origin = tuple(project_3d_to_2d(np.array([0, 0, 0, 1]), K, ob_in_cam))
   xx = tuple(project_3d_to_2d(xx, K, ob_in_cam))
   yy = tuple(project_3d_to_2d(yy, K, ob_in_cam))
   zz = tuple(project_3d_to_2d(zz, K, ob_in_cam))
+
+  # Defining line drawing parameters
   line_type = cv2.LINE_AA
   arrow_len = 0
-  tmp = color.copy()
-  tmp1 = tmp.copy()
-  tmp1 = cv2.arrowedLine(tmp1, origin, xx, color=(0,0,255), thickness=thickness,line_type=line_type, tipLength=arrow_len)
-  mask = np.linalg.norm(tmp1-tmp, axis=-1)>0
-  tmp[mask] = tmp[mask]*transparency + tmp1[mask]*(1-transparency)
-  tmp1 = tmp.copy()
-  tmp1 = cv2.arrowedLine(tmp1, origin, yy, color=(0,255,0), thickness=thickness,line_type=line_type, tipLength=arrow_len)
-  mask = np.linalg.norm(tmp1-tmp, axis=-1)>0
-  tmp[mask] = tmp[mask]*transparency + tmp1[mask]*(1-transparency)
-  tmp1 = tmp.copy()
-  tmp1 = cv2.arrowedLine(tmp1, origin, zz, color=(255,0,0), thickness=thickness,line_type=line_type, tipLength=arrow_len)
-  mask = np.linalg.norm(tmp1-tmp, axis=-1)>0
-  tmp[mask] = tmp[mask]*transparency + tmp1[mask]*(1-transparency)
-  tmp = tmp.astype(np.uint8)
-  if is_input_rgb:
-    tmp = cv2.cvtColor(tmp,cv2.COLOR_BGR2RGB)
 
-  return tmp
+  # Draw the X axis (red)
+  color = cv2.arrowedLine(color, origin, xx, color=(0, 0, 255), thickness=thickness, line_type=line_type, tipLength=arrow_len)
+
+  # Draw the Y axis (green)
+  color = cv2.arrowedLine(color, origin, yy, color=(0, 255, 0), thickness=thickness, line_type=line_type, tipLength=arrow_len)
+
+  # Draw the Z axis (blue)
+  color = cv2.arrowedLine(color, origin, zz, color=(255, 0, 0), thickness=thickness, line_type=line_type, tipLength=arrow_len)
+
+  if is_input_rgb:
+      color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
+
+  return color
 
 
 def draw_posed_3d_box(K, img, ob_in_cam, bbox, line_color=(0,255,0), linewidth=2):

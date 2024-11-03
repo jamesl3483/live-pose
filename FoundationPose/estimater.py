@@ -234,6 +234,7 @@ class FoundationPose:
     self.pose_last = poses[0]
     self.best_id = ids[0]
 
+    #print('poses:', poses)
     self.poses = poses
     self.scores = scores
 
@@ -265,6 +266,10 @@ class FoundationPose:
     if self.debug>=2:
       extra['vis'] = vis
     self.pose_last = pose
+    
+    scores, vis = self.scorer.predict(mesh=self.mesh, rgb=rgb, depth=depth, K=K, ob_in_cams=self.pose_last.reshape(1,4,4).data.cpu().numpy(), normal_map=None, mesh_tensors=self.mesh_tensors, glctx=self.glctx, mesh_diameter=self.diameter, get_vis=self.debug>=2)
+    self.scores = scores
+    
     return (pose@self.get_tf_to_centered_mesh()).data.cpu().numpy().reshape(4,4)
 
 

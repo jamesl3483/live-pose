@@ -16,20 +16,42 @@ set_seed(0)
 root = tk.Tk()
 root.withdraw()
 
-mesh_path = filedialog.askopenfilename()
-if not mesh_path:
-    print("No mesh file selected")
-    exit(0)
-# mesh_path = '/home/jamesl3483/Desktop/Research/live-pose/FoundationPose/demo_data/YCB_Video_Models/models/010_potted_meat_can/textured_simple.obj'
 
-mask_file_path = create_mask()
-mesh = trimesh.load(mesh_path)
-to_origin, extents = trimesh.bounds.oriented_bounds(mesh)
-bbox = np.stack([-extents/2, extents/2], axis=0).reshape(2,3)
-scorer = ScorePredictor()
-refiner = PoseRefinePredictor()
-glctx = dr.RasterizeCudaContext()
-est = FoundationPose(model_pts=mesh.vertices, model_normals=mesh.vertex_normals, mesh=mesh, scorer=scorer, refiner=refiner,glctx=glctx)
+#Create list objects to store all variables
+num_of_objects = 2
+lst_to_origin = []
+lst_bbox = []
+lst_est = []
+lst_mask = []
+
+
+
+for i in range(num_of_objects):
+    mesh_path = filedialog.askopenfilename()
+    if not mesh_path:
+        print("No mesh file selected")
+        exit(0)
+    # mesh_path = '/home/jamesl3483/Desktop/Research/live-pose/FoundationPose/demo_data/YCB_Video_Models/models/010_potted_meat_can/textured_simple.obj'
+
+    mask_file_path = create_mask(f'mask_{i}')
+    mesh = trimesh.load(mesh_path)
+    to_origin, extents = trimesh.bounds.oriented_bounds(mesh)
+    bbox = np.stack([-extents/2, extents/2], axis=0).reshape(2,3)
+    scorer = ScorePredictor()
+    refiner = PoseRefinePredictor()
+    glctx = dr.RasterizeCudaContext()
+    est = FoundationPose(model_pts=mesh.vertices, model_normals=mesh.vertex_normals, mesh=mesh, scorer=scorer, refiner=refiner,glctx=glctx)
+    mask = cv2.imread(mask_file_path, cv2.IMREAD_UNCHANGED)
+
+    #Append all values for future inference
+    lst_to_origin.append(to_origin)
+    lst_bbox.append(bbox)
+    lst_est.append(est)
+    lst_mask.append(mask)
+
+
+
+#Start Camera stream
 pipeline = rs.pipeline()
 config = rs.config()
 pipeline_wrapper = rs.pipeline_wrapper(pipeline)
@@ -46,17 +68,16 @@ clipping_distance = clipping_distance_in_meters / depth_scale
 align_to = rs.stream.color
 align = rs.align(align_to)
 
-i = 0
 
-mask = cv2.imread(mask_file_path, cv2.IMREAD_UNCHANGED)
 cam_K = np.array([[615.37701416, 0., 313.68743896],
                    [0., 615.37701416, 259.01800537],
                    [0., 0., 1.]])
 Estimating = True
-time.sleep(3)
-counter = 0
+time.sleep(3) 
+i = 0
 # Streaming loop
 try:
+
     while Estimating:
         frames = pipeline.wait_for_frames()
         aligned_frames = align.process(frames)
@@ -74,20 +95,21 @@ try:
         color = cv2.resize(color_image, (W,H), interpolation=cv2.INTER_NEAREST)
         depth = cv2.resize(depth_image_scaled, (W,H), interpolation=cv2.INTER_NEAREST)
         depth[(depth<0.1) | (depth>=np.inf)] = 0
-        if i==0:
-            if len(mask.shape)==3:
-                for c in range(3):
-                    if mask[...,c].sum()>0:
-                        mask = mask[...,c]
-                        break
-            mask = cv2.resize(mask, (W,H), interpolation=cv2.INTER_NEAREST).astype(bool).astype(np.uint8)
-        
-            pose = est.register(K=cam_K, rgb=color, depth=depth, ob_mask=mask, iteration=args.est_refine_iter)
-        else:
-            pose = est.track_one(rgb=color, depth=depth, K=cam_K, iteration=args.track_refine_iter)
-        center_pose = pose@np.linalg.inv(to_origin)
-        vis = draw_posed_3d_box(cam_K, img=color, ob_in_cam=center_pose, bbox=bbox)
-        vis = draw_xyz_axis(color, ob_in_cam=center_pose, scale=0.1, K=cam_K, thickness=3, transparency=0, is_input_rgb=True)
+        for num in range(num_of_objects):
+            if i==0:
+                if len(lst_mask[num].shape)==3:
+                    for c in range(3):
+                        if lst_mask[num][...,c].sum()>0:
+                            lst_mask[num] = lst_mask[num][...,c]
+                            break
+                lst_mask[num] = cv2.resize(lst_mask[num], (W,H), interpolation=cv2.INTER_NEAREST).astype(bool).astype(np.uint8)
+            
+                pose = lst_est[num].register(K=cam_K, rgb=color, depth=depth, ob_mask=lst_mask[num], iteration=args.est_refine_iter)
+            else:
+                pose = lst_est[num].track_one(rgb=color, depth=depth, K=cam_K, iteration=args.track_refine_iter)
+            center_pose = pose@np.linalg.inv(lst_to_origin[num])
+            vis = draw_posed_3d_box(cam_K, img=color, ob_in_cam=center_pose, bbox=lst_bbox[num])
+            vis = draw_xyz_axis(color, ob_in_cam=center_pose, scale=0.1, K=cam_K, thickness=3, transparency=0, is_input_rgb=True)
         cv2.imshow('1', vis[...,::-1])
         cv2.waitKey(1)        
         i += 1

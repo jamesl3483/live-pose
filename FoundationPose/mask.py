@@ -3,9 +3,9 @@ import numpy as np
 import pyrealsense2 as rs
 import time
 
-def create_mask():
+def create_mask(name='mask'):
     points = []
-    mask_path = './mask.png'
+    mask_path = f'./{name}.png'
 
     def select_points(event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
